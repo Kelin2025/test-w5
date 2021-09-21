@@ -1,19 +1,19 @@
 const path = require("path");
-const webpack = require("webpack");
+// const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const postcssImport = require("postcss-import");
 const tailwindcss = require("tailwindcss");
 const autoprefixer = require("autoprefixer");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
-const errorOverlayMiddleware = require("react-dev-utils/errorOverlayMiddleware");
+// const errorOverlayMiddleware = require("react-dev-utils/errorOverlayMiddleware");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const CompressionPlugin = require("compression-webpack-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
-const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-const ESLintPlugin = require("eslint-webpack-plugin");
+// const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
+// const ESLintPlugin = require("eslint-webpack-plugin");
 require("dotenv").config();
 
 const federationConfig = require("./config/federation.config");
@@ -25,78 +25,76 @@ const mode = process.env.NODE_ENV || "development";
 const isProdMode = mode === "production";
 const port = process.env.PORT;
 
-const hasJsxRuntime = (() => {
-  if (process.env.DISABLE_NEW_JSX_TRANSFORM === "true") {
-    return false;
-  }
-
-  try {
-    require.resolve("react/jsx-runtime");
-    return true;
-  } catch (e) {
-    return false;
-  }
-})();
-
 module.exports = {
   mode,
   entry: "./src/index",
   output: {
     publicPath: "/",
-    path: path.resolve(process.cwd(), "build"),
+    path: path.resolve(process.cwd(), "dist"),
     filename: isProdMode ? "[name].[contenthash].js" : "[name].js",
   },
-  devtool: isProdMode ? "source-map" : "inline-source-map",
+  devtool: "source-map",
   devServer: {
-    hot: true,
+    host: "0.0.0.0",
+    port,
     historyApiFallback: true,
+    allowedHosts: [".127-0-0-1.nip.io", ".127.0.0.1.nip.io"],
     static: {
       directory: path.resolve(__dirname, "public"),
       publicPath: "/public/",
       watch: true,
     },
-    onBeforeSetupMiddleware({ app, server }) {
-      app.use(errorOverlayMiddleware());
-    },
+    proxy: [
+      {
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        context: [
+          "/auth", // keycloak
+          "/services", // сервисы backend, file-srv, report итд
+          "/static/docs", // скопировано из ../../maintenance/docs/ при сборке bundle, но как это подключить корректно я не знаю.
+          "/contexthelp", // статические файлы контекстной помощи
+          "/hasura/shard/v1/graphql", // hasura backend
+          "/hasura/global/v1/graphql", // hasura global backend
+        ],
+        target: `https://dev1-88.pcbltools.ru:443`,
+        router(req) {
+          const LOCAL_HOST_REGEX = /^local-(\d{4})\..*/;
+          const { hostname } = req;
+          const localHost = LOCAL_HOST_REGEX.exec(hostname);
+          if (localHost) {
+            return `https://localhost:${localHost[1]}`;
+          }
+          return null;
+        },
+        onProxyReq(proxyReq, req) {
+          proxyReq.setHeader("X-Forwarded-Host", req.hostname);
+          proxyReq.setHeader("X-Forwarded-Port", port);
+          proxyReq.setHeader("X-Forwarded-Proto", req.protocol);
+        },
+      },
+    ],
   },
   optimization: {
     minimize: isProdMode,
     minimizer: [`...`, new CssMinimizerPlugin()],
-    splitChunks: { chunks: "all" },
   },
   resolve: {
-    extensions: ["*", ".js", ".ts", ".tsx"],
+    extensions: [
+      ".webpack.js",
+      ".web.js",
+      ".mjs",
+      ".js",
+      ".json",
+      ".tsx",
+      ".ts",
+      ".jsx",
+    ],
     alias: {
-      "@": path.join(__dirname, "/src"),
-    },
-    fallback: {
-      fs: false,
-      os: false,
-      vm: false,
-      tls: false,
-      net: false,
-      path: false,
-      zlib: false,
-      http: false,
-      util: false,
-      https: false,
-      stream: false,
-      crypto: false,
-      esbuild: false,
-      module: false,
-      child_process: false,
-      worker_threads: false,
+      "@src": path.join(__dirname, "/src"),
     },
   },
   module: {
-    strictExportPresence: true,
-    parser: {
-      javascript: {
-        // NOTE: Disable `require.ensure` as it's not a standard language
-        //       feature.
-        requireEnsure: false,
-      },
-    },
     rules: [
       {
         test: /\.m?js/,
@@ -105,25 +103,9 @@ module.exports = {
         },
       },
       {
-        test: /\.(ts|tsx)$/,
+        test: /\.tsx?$/,
+        use: "ts-loader",
         exclude: /node_modules/,
-        use: [
-          {
-            loader: "babel-loader",
-          },
-          {
-            loader: "ts-loader",
-          },
-        ],
-      },
-      {
-        test: /\.(js|jsx)$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: "babel-loader",
-          },
-        ],
       },
       {
         test: /\.svg$/,
@@ -135,19 +117,14 @@ module.exports = {
       },
       {
         test: /\.(jpe?g|png|webp)$/i,
-        type: "asset",
-        // use: [
-        //   {
-        //     loader: "responsive-loader",
-        //     options: {
-        //       adapter: require("responsive-loader/sharp"),
-        //     },
-        //   },
-        // ],
-      },
-      {
-        test: /\.(eot|otf|ttf|woff|woff2)$/,
-        type: "asset/resource",
+        use: [
+          {
+            loader: "responsive-loader",
+            options: {
+              adapter: require("responsive-loader/sharp"),
+            },
+          },
+        ],
       },
       {
         test: /\.(css)$/,
@@ -165,65 +142,22 @@ module.exports = {
           },
         ],
       },
-      {
-        test: /\.(scss)$/,
-        use: [
-          MiniCssExtractPlugin.loader,
-          "css-loader",
-          {
-            loader: "postcss-loader", // postcss loader needed for tailwindcss
-            options: {
-              postcssOptions: {
-                ident: "postcss",
-                plugins: [postcssImport, tailwindcss(), autoprefixer],
-              },
-            },
-          },
-          "sass-loader",
-        ],
-      },
     ],
   },
   plugins: [
-    new NodePolyfillPlugin(),
     ...(isProdMode ? [new CompressionPlugin()] : []),
     new CleanWebpackPlugin(),
-    // new ModuleFederationPlugin(federationConfig),
+    new ModuleFederationPlugin(federationConfig),
     new HtmlWebpackPlugin({
       template: "./public/index.html",
+      dev_config_url: process.env.DEV_URL_CONFIGURATION,
+      stand_config_url: isProdMode
+        ? process.env.REMOTE_URL_CONFIGURATION
+        : `https://dev${process.env.STAND_NUMBER}.pcbltools.ru${process.env.REMOTE_URL_CONFIGURATION}`,
     }),
     new MiniCssExtractPlugin({
       filename: isProdMode ? "[name].[contenthash].css" : "[name].css",
     }),
-    new ESLintPlugin({
-      // Plugin options
-      extensions: ["js", "mjs", "jsx", "ts", "tsx"],
-      formatter: require.resolve("react-dev-utils/eslintFormatter"),
-      eslintPath: require.resolve("eslint"),
-      failOnError: !isProdMode,
-      context: path.resolve(__dirname, "src"),
-      cache: true,
-      cacheLocation: path.resolve(__dirname, ".cache", ".eslintcache"),
-      // ESLint class options
-      cwd: path.resolve("."),
-      resolvePluginsRelativeTo: __dirname,
-      baseConfig: {
-        extends: [require.resolve("eslint-config-react-app/base")],
-        rules: {
-          ...(!hasJsxRuntime && {
-            "react/react-in-jsx-scope": "error",
-          }),
-        },
-      },
-    }),
     ...(isNeedBundleAnalyzer ? [new BundleAnalyzerPlugin()] : []),
   ],
-  performance: {
-    hints: false,
-  },
-  stats: {
-    preset: isProdMode ? "errors-warnings" : "errors-warnings",
-    errorDetails: true,
-  },
-  target: "browserslist",
 };

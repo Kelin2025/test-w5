@@ -1,8 +1,8 @@
-const path = require("path");
+// const path = require("path");
 
-const tailwindParams = require("./src/shared/ui/tailwind.params");
+// const tailwindParams = require("./src/shared/ui/tailwind.params.js");
 
-const Breakpoint = tailwindParams.screens;
+const Breakpoint = { phone: 0, tablet: 0, laptop: 0, desktop: 0 };
 
 // tailwind.config.js
 module.exports = {
@@ -11,7 +11,7 @@ module.exports = {
   },
   darkMode: false, // or 'media' or 'class'
   theme: {
-    extend: require(path.join(__dirname, "./src/shared/ui/tailwind.theme.js")),
+    // extend: require("./src/shared/ui/tailwind.theme.js"),
     screens: {
       phone: `${Breakpoint.phone}px`,
       tablet: `${Breakpoint.tablet}px`,
@@ -23,7 +23,7 @@ module.exports = {
     extend: {},
   },
   plugins: [
-    require("@tailwindcss/aspect-ratio"),
-    require("@tailwindcss/line-clamp"),
+    // require("@tailwindcss/aspect-ratio"),
+    // require("@tailwindcss/line-clamp"),
   ],
 };
