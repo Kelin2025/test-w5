@@ -1,0 +1,41 @@
+/* @import "swiper/swiper-bundle.css";
+@import "swiper/components/effect-fade/effect-fade.min.css"; */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "SB Sans Interface";
+  font-weight: normal;
+  src: url("./assets/fonts/SBSansUI-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "SB Sans Interface";
+  font-weight: 600;
+  src: url("./assets/fonts/SBSansUI-Semibold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "SB Sans Interface";
+  font-weight: 700;
+  src: url("./assets/fonts/SBSansUI-Bold.woff2") format("woff2");
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+#app {
+  overflow: auto;
+}
+
+/* WIP: Hard-coded scale fix for macos */
+@media (min-width: 1280px) and (max-width: 1600px) {
+  body {
+    zoom: 0.8;
+  }
+}
